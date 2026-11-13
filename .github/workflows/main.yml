@@ -1,0 +1,78 @@
+name: Build and Publish Debug APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Find project folder
+        id: detect
+        run: |
+          DIR=""
+          for f in $(find . -name package.json -not -path '*/node_modules/*'); do
+            d=$(dirname "$f")
+            if [ -d "$d/android" ]; then DIR="$d"; break; fi
+          done
+          if [ -z "$DIR" ]; then
+            echo "ERROR: no package.json with an android folder next to it. Repo files:"
+            find . -maxdepth 3 -not -path './.git/*' | head -60
+            exit 1
+          fi
+          echo "Project folder: $DIR"
+          echo "dir=$DIR" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        working-directory: ${{ steps.detect.outputs.dir }}
+        run: npm install --legacy-peer-deps
+
+      - name: Build web app
+        working-directory: ${{ steps.detect.outputs.dir }}
+        run: npm run build
+
+      - name: Sync Capacitor
+        working-directory: ${{ steps.detect.outputs.dir }}
+        run: npx cap sync android
+
+      - name: Build debug APK
+        working-directory: ${{ steps.detect.outputs.dir }}/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace --no-daemon
+
+      - name: Verify APK
+        run: ls -lh "${{ steps.detect.outputs.dir }}/android/app/build/outputs/apk/debug/app-debug.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: ${{ steps.detect.outputs.dir }}/android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: Publish release
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp "${{ steps.detect.outputs.dir }}/android/app/build/outputs/apk/debug/app-debug.apk" zentix-wb-debug-${{ github.run_number }}.apk
+          gh release create "debug-apk-build-${{ github.run_number }}-${{ github.run_attempt }}" \
+            "zentix-wb-debug-${{ github.run_number }}.apk" \
+            --title "Debug APK Build #${{ github.run_number }}" \
+            --target "${{ github.sha }}" --latest
