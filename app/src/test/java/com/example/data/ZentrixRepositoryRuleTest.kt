@@ -105,6 +105,25 @@ class ZentrixRepositoryRuleTest : FirestoreEmulatorTestBase() {
         }
     }
 
+    @Test
+    fun syncUserProfileOnLogin_authenticatedUser_createsAndUpdatesSafely() = runBlocking {
+        val uid = signInTestUser(ALICE_EMAIL)
+        val repository = ZentrixRepository(firestore)
+
+        val firstSync = withTimeout(DEFAULT_TIMEOUT_MS) { repository.syncUserProfileOnLogin() }
+        assertTrue(firstSync.isSuccess)
+
+        val secondSync = withTimeout(DEFAULT_TIMEOUT_MS) { repository.syncUserProfileOnLogin() }
+        assertTrue(secondSync.isSuccess)
+
+        val profile = withTimeout(FLOW_TIMEOUT_MS) {
+            repository.observeUserProfile(uid).first { it != null }
+        }
+        assertNotNull(profile)
+        assertEquals(uid, profile?.userId)
+        assertTrue(!profile?.displayName.isNullOrBlank())
+    }
+
     private companion object {
         const val ALICE_EMAIL = "alice@zentrixstore.app"
         const val BOB_EMAIL = "bob@zentrixstore.app"

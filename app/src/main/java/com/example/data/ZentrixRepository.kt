@@ -44,27 +44,78 @@ class ZentrixRepository(val db: FirebaseFirestore) {
             .map { it.toObject(UserProfile::class.java) }
     }
 
-    suspend fun saveUserProfile(profile: UserProfile): Result<Unit> {
+    suspend fun syncUserProfileOnLogin(): Result<Unit> {
         val uid = requireUserId()
+        val currentUser = auth.currentUser
         val docRef = db.collection("users").document(uid)
         return try {
             val snapshot = docRef.get().await()
+            val resolvedName = currentUser?.displayName?.takeIf { it.isNotBlank() } ?: "Zentrix Learner"
+            val resolvedEmail = currentUser?.email?.takeIf { it.isNotBlank() } ?: "$uid@zentrixstore.app"
+            val resolvedPhoto = currentUser?.photoUrl?.toString()
+
             if (!snapshot.exists()) {
                 val data = mapOf(
                     "userId" to uid,
-                    "displayName" to profile.displayName.ifBlank { "Zentrix Learner" },
-                    "email" to profile.email.ifBlank { auth.currentUser?.email.orEmpty() },
-                    "photoUrl" to profile.photoUrl,
-                    "language" to profile.language,
+                    "displayName" to resolvedName,
+                    "email" to resolvedEmail,
+                    "photoUrl" to resolvedPhoto,
+                    "language" to "en",
+                    "createdAt" to FieldValue.serverTimestamp(),
+                    "updatedAt" to FieldValue.serverTimestamp()
+                ).filterValues { it != null }
+                docRef.set(data).await()
+            } else {
+                val updateData = mutableMapOf<String, Any>(
+                    "updatedAt" to FieldValue.serverTimestamp()
+                )
+                if (!currentUser?.displayName.isNullOrBlank()) {
+                    updateData["displayName"] = currentUser!!.displayName!!
+                }
+                if (!resolvedPhoto.isNullOrBlank()) {
+                    updateData["photoUrl"] = resolvedPhoto
+                }
+                docRef.update(updateData).await()
+            }
+            Result.success(Unit)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            handleFirestoreError(e, OperationType.WRITE, docRef.path)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun saveUserProfile(profile: UserProfile): Result<Unit> {
+        val uid = requireUserId()
+        val currentUser = auth.currentUser
+        val docRef = db.collection("users").document(uid)
+        return try {
+            val snapshot = docRef.get().await()
+            val resolvedName = profile.displayName.ifBlank {
+                currentUser?.displayName?.takeIf { it.isNotBlank() } ?: "Zentrix Learner"
+            }
+            val resolvedEmail = profile.email.ifBlank {
+                currentUser?.email?.takeIf { it.isNotBlank() } ?: "$uid@zentrixstore.app"
+            }
+            val resolvedPhoto = profile.photoUrl ?: currentUser?.photoUrl?.toString()
+
+            if (!snapshot.exists()) {
+                val data = mapOf(
+                    "userId" to uid,
+                    "displayName" to resolvedName,
+                    "email" to resolvedEmail,
+                    "photoUrl" to resolvedPhoto,
+                    "language" to profile.language.ifBlank { "en" },
                     "createdAt" to FieldValue.serverTimestamp(),
                     "updatedAt" to FieldValue.serverTimestamp()
                 ).filterValues { it != null }
                 docRef.set(data).await()
             } else {
                 val updateData = mapOf(
-                    "displayName" to profile.displayName,
-                    "photoUrl" to profile.photoUrl,
-                    "language" to profile.language,
+                    "displayName" to resolvedName,
+                    "photoUrl" to resolvedPhoto,
+                    "language" to profile.language.ifBlank { "en" },
                     "updatedAt" to FieldValue.serverTimestamp()
                 ).filterValues { it != null }
                 docRef.update(updateData).await()

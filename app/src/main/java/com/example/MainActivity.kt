@@ -32,11 +32,13 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.credentials.CredentialManager
 import com.example.data.ZentrixRepository
 import com.example.ui.components.LanguageState
 import com.example.ui.components.ProvideAppLanguage
 import com.example.ui.components.ZentrixBottomBar
 import com.example.ui.components.ZentrixTopBar
+import com.example.ui.components.attemptAutoSignIn
 import com.example.ui.navigation.Screen
 import com.example.ui.screens.AuthScreen
 import com.example.ui.screens.CourseDetailScreen
@@ -71,7 +73,10 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun AppContent() {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     var currentUser by remember { mutableStateOf(Firebase.auth.currentUser) }
+    var hasAttemptedAutoSignIn by remember { mutableStateOf(false) }
 
     DisposableEffect(Unit) {
         val listener = FirebaseAuth.AuthStateListener { auth ->
@@ -80,6 +85,24 @@ fun AppContent() {
         Firebase.auth.addAuthStateListener(listener)
         onDispose {
             Firebase.auth.removeAuthStateListener(listener)
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (currentUser == null && !hasAttemptedAutoSignIn) {
+            hasAttemptedAutoSignIn = true
+            val credentialManager = CredentialManager.create(context)
+            attemptAutoSignIn(
+                context = context,
+                credentialManager = credentialManager,
+                onAuthSuccess = {
+                    currentUser = Firebase.auth.currentUser
+                },
+                onUnauthenticated = {
+                    // Stay on AuthScreen for interactive sign-in
+                },
+                scope = coroutineScope
+            )
         }
     }
 

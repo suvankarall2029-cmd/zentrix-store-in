@@ -169,14 +169,20 @@ fun AuthScreen(
                     color = ZentrixError,
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(bottom = 16.dp)
+                    modifier = Modifier
+                        .padding(bottom = 16.dp)
+                        .testTag("auth_error_message")
                 )
             }
 
             // Google Sign In Button
             GoogleSignInButton(
-                onAuthSuccess = onAuthSuccess,
-                onAuthError = { errorMsg -> errorMessage = errorMsg }
+                onAuthSuccess = {
+                    errorMessage = null
+                    onAuthSuccess()
+                },
+                onAuthError = { errorMsg -> errorMessage = errorMsg },
+                onSignInStarted = { errorMessage = null }
             )
 
             Spacer(modifier = Modifier.height(24.dp))

@@ -59,14 +59,7 @@ class ZentrixViewModel(
 
     private fun syncCurrentUserProfile() {
         viewModelScope.launch {
-            repository.saveUserProfile(
-                UserProfile(
-                    userId = currentUserId,
-                    displayName = "",
-                    email = "",
-                    language = "en"
-                )
-            )
+            repository.syncUserProfileOnLogin()
         }
     }
 
