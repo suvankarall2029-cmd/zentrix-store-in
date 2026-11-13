@@ -1,0 +1,132 @@
+name: Build and Publish Debug APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create google-services.json if missing
+        run: |
+          if [ ! -f app/google-services.json ]; then
+            echo "app/google-services.json not in repo, creating it"
+            cat > app/google-services.json <<'EOF'
+          {
+            "project_info": {
+              "project_number": "303993496345",
+              "project_id": "gen-lang-client-0307525170",
+              "storage_bucket": "gen-lang-client-0307525170.firebasestorage.app"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:303993496345:android:023a026bb2362ec579db88",
+                  "android_client_info": {
+                    "package_name": "com.zentrixstore.app"
+                  }
+                },
+                "oauth_client": [
+                  {
+                    "client_id": "303993496345-66mj1k4j1qcd4rgitb9p1k8pv87k8g4q.apps.googleusercontent.com",
+                    "client_type": 1,
+                    "android_info": {
+                      "package_name": "com.zentrixstore.app",
+                      "certificate_hash": "5a35cb0933448d601ed953d6b070bdc9ac3c254c"
+                    }
+                  },
+                  {
+                    "client_id": "303993496345-udbgqos19qqm9t96451ru2mjts87iajk.apps.googleusercontent.com",
+                    "client_type": 3
+                  }
+                ],
+                "api_key": [
+                  {
+                    "current_key": "AIzaSyDmBGvXoOOf15qzoGdiQ54lnXfwm2_bI6Y"
+                  }
+                ],
+                "services": {
+                  "appinvite_service": {
+                    "other_platform_oauth_client": [
+                      {
+                        "client_id": "303993496345-udbgqos19qqm9t96451ru2mjts87iajk.apps.googleusercontent.com",
+                        "client_type": 3
+                      }
+                    ]
+                  }
+                }
+              }
+            ],
+            "configuration_version": "1"
+          }
+          EOF
+          fi
+          python3 -c "import json;json.load(open('app/google-services.json'));print('google-services.json OK')"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+          cache-disabled: true
+
+      - name: Create debug keystore
+        run: |
+          if [ ! -f debug.keystore ]; then
+            keytool -genkey -v -keystore debug.keystore \
+              -storepass android -alias androiddebugkey -keypass android \
+              -dname "CN=Android Debug,O=Android,C=US" \
+              -keyalg RSA -keysize 2048 -validity 10000
+          fi
+
+      - name: Build debug APK
+        run: |
+          set -o pipefail
+          gradle :app:assembleDebug --no-daemon --console=plain --stacktrace \
+            --no-configuration-cache --no-parallel --no-build-cache \
+            -Pkotlin.compiler.execution.strategy=daemon \
+            -Pkotlin.daemon.jvmargs=-Xmx3g 2>&1 | tee build.log
+
+      - name: Error summary
+        if: failure()
+        run: |
+          {
+            echo "## Build error summary"
+            echo '```'
+            grep -n "FAILED" build.log | head -10
+            echo "-----"
+            grep -n "^e: " build.log | head -20
+            echo "-----"
+            grep -n -A8 "What went wrong" build.log | head -30
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Verify APK
+        run: ls -lh app/build/outputs/apk/debug/app-debug.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: Publish release
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk zentrix-store-debug-${{ github.run_number }}.apk
+          gh release create "debug-apk-build-${{ github.run_number }}-${{ github.run_attempt }}" \
+            "zentrix-store-debug-${{ github.run_number }}.apk" \
+            --title "Debug APK Build #${{ github.run_number }}" \
+            --target "${{ github.sha }}" --latest
