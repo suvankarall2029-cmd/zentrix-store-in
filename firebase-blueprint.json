@@ -1,0 +1,191 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile associated with Google Sign-In UID",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID" },
+        "displayName": { "type": "string", "description": "User display name" },
+        "email": { "type": "string", "description": "User email address" },
+        "photoUrl": { "type": "string", "description": "Profile photo URL" },
+        "language": { "type": "string", "description": "Preferred language en or bn" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp via serverTimestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Update timestamp via serverTimestamp" }
+      },
+      "required": ["userId", "displayName", "email", "createdAt"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Course categories",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "English category name" },
+        "nameBn": { "type": "string", "description": "Bengali category name" },
+        "icon": { "type": "string", "description": "Icon identifier" },
+        "courseCount": { "type": "integer", "description": "Total courses in category" }
+      },
+      "required": ["name", "nameBn"]
+    },
+    "Course": {
+      "title": "Course",
+      "description": "Course offered on marketplace",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Course title" },
+        "titleBn": { "type": "string", "description": "Course title in Bengali" },
+        "description": { "type": "string", "description": "Detailed description" },
+        "descriptionBn": { "type": "string", "description": "Description in Bengali" },
+        "instructor": { "type": "string", "description": "Instructor full name" },
+        "category": { "type": "string", "description": "Category slug or name" },
+        "price": { "type": "number", "description": "Course price in INR (0 for free)" },
+        "isFree": { "type": "boolean", "description": "Whether course is free to enroll" },
+        "duration": { "type": "string", "description": "Total course duration" },
+        "level": { "type": "string", "description": "Beginner, Intermediate, Advanced" },
+        "rating": { "type": "number", "description": "Average rating" },
+        "studentsCount": { "type": "integer", "description": "Enrolled student count" },
+        "lessonsCount": { "type": "integer", "description": "Total lessons count" },
+        "published": { "type": "boolean", "description": "Publication status" },
+        "featured": { "type": "boolean", "description": "Whether featured on homepage" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "instructor", "category", "isFree", "published"]
+    },
+    "Lesson": {
+      "title": "Lesson",
+      "description": "Lesson belonging to a course",
+      "type": "object",
+      "properties": {
+        "courseId": { "type": "string", "description": "Parent course ID" },
+        "title": { "type": "string", "description": "Lesson title" },
+        "titleBn": { "type": "string", "description": "Lesson title in Bengali" },
+        "duration": { "type": "string", "description": "Duration" },
+        "order": { "type": "integer", "description": "Order index" },
+        "videoUrl": { "type": "string", "description": "Lesson video playback URL" },
+        "pdfUrl": { "type": "string", "description": "Protected PDF notes/document URL" },
+        "isPreview": { "type": "boolean", "description": "Free preview lesson" }
+      },
+      "required": ["courseId", "title", "order"]
+    },
+    "Enrollment": {
+      "title": "Enrollment",
+      "description": "User course enrollment and progress",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Student user ID" },
+        "courseId": { "type": "string", "description": "Enrolled course ID" },
+        "courseTitle": { "type": "string", "description": "Enrolled course title" },
+        "enrolledAt": { "type": "string", "format": "date-time" },
+        "completedLessonIds": { "type": "array", "description": "IDs of completed lessons" },
+        "progressPercent": { "type": "integer", "description": "Learning progress 0-100" },
+        "lastLessonId": { "type": "string", "description": "Last accessed lesson ID" },
+        "lastAccessedAt": { "type": "string", "format": "date-time" },
+        "isPaid": { "type": "boolean", "description": "Whether enrollment was via purchase" },
+        "orderId": { "type": "string", "description": "Associated order ID" }
+      },
+      "required": ["userId", "courseId", "courseTitle", "enrolledAt"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Course purchase order and transaction",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Buyer UID" },
+        "courseId": { "type": "string", "description": "Course ID being purchased" },
+        "courseTitle": { "type": "string", "description": "Course title" },
+        "amount": { "type": "number", "description": "Total payment amount in INR" },
+        "currency": { "type": "string", "description": "INR" },
+        "status": { "type": "string", "description": "PENDING, SUCCESS, FAILED" },
+        "paymentProvider": { "type": "string", "description": "Razorpay" },
+        "paymentMethod": { "type": "string", "description": "UPI, Card, NetBanking" },
+        "transactionId": { "type": "string", "description": "Provider transaction ID" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "courseId", "amount", "status", "createdAt"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "User notification",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Recipient UID" },
+        "title": { "type": "string", "description": "Notification title" },
+        "titleBn": { "type": "string", "description": "Notification title in Bengali" },
+        "message": { "type": "string", "description": "Notification message" },
+        "messageBn": { "type": "string", "description": "Notification message in Bengali" },
+        "type": { "type": "string", "description": "PURCHASE, COURSE_UPDATE, ANNOUNCEMENT, WELCOME" },
+        "read": { "type": "boolean", "description": "Read status" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "message", "read", "createdAt"]
+    },
+    "Announcement": {
+      "title": "Announcement",
+      "description": "Broadcast platform announcement",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "description": "Announcement title" },
+        "titleBn": { "type": "string", "description": "Title in Bengali" },
+        "message": { "type": "string", "description": "Message" },
+        "messageBn": { "type": "string", "description": "Message in Bengali" },
+        "priority": { "type": "string", "description": "NORMAL, HIGH, URGENT" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "message", "createdAt"]
+    },
+    "SupportTicket": {
+      "title": "SupportTicket",
+      "description": "User help and support inquiry",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Author UID" },
+        "userEmail": { "type": "string", "description": "Contact email" },
+        "subject": { "type": "string", "description": "Ticket subject" },
+        "message": { "type": "string", "description": "Inquiry details" },
+        "status": { "type": "string", "description": "OPEN, RESOLVED" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "userEmail", "subject", "message", "status", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile documents"
+    },
+    "/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "Marketplace course categories"
+    },
+    "/courses/{courseId}": {
+      "schema": "Course",
+      "description": "Published courses marketplace collection"
+    },
+    "/lessons/{lessonId}": {
+      "schema": "Lesson",
+      "description": "Course curriculum lessons"
+    },
+    "/enrollments/{enrollmentId}": {
+      "schema": "Enrollment",
+      "description": "User enrollments with progress tracking"
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Course purchase transactions"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "User notifications"
+    },
+    "/announcements/{announcementId}": {
+      "schema": "Announcement",
+      "description": "Platform-wide announcements"
+    },
+    "/supportTickets/{ticketId}": {
+      "schema": "SupportTicket",
+      "description": "Customer support requests"
+    }
+  }
+}

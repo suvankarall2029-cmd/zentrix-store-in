@@ -1,0 +1,194 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidUser(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 100 &&
+             data.email is string && data.email.size() >= 3 && data.email.size() <= 150 &&
+             (!('photoUrl' in data) || data.photoUrl == null || (data.photoUrl is string && data.photoUrl.size() <= 1000)) &&
+             (!('language' in data) || data.language == null || (data.language is string && data.language.size() <= 10)) &&
+             (!('updatedAt' in data) || data.updatedAt == null || (data.updatedAt is timestamp && data.updatedAt <= request.time));
+    }
+
+    function isValidEnrollment(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.courseId is string && data.courseId.size() > 0 && data.courseId.size() <= 100 &&
+             data.courseTitle is string && data.courseTitle.size() > 0 && data.courseTitle.size() <= 200 &&
+             (!('completedLessonIds' in data) || (data.completedLessonIds is list && data.completedLessonIds.size() <= 200)) &&
+             (!('progressPercent' in data) || (data.progressPercent is int && data.progressPercent >= 0 && data.progressPercent <= 100)) &&
+             (!('lastLessonId' in data) || data.lastLessonId == null || (data.lastLessonId is string && data.lastLessonId.size() <= 100)) &&
+             (!('lastAccessedAt' in data) || data.lastAccessedAt == null || (data.lastAccessedAt is timestamp && data.lastAccessedAt <= request.time)) &&
+             (!('isPaid' in data) || data.isPaid is bool) &&
+             (!('orderId' in data) || data.orderId == null || (data.orderId is string && data.orderId.size() <= 100));
+    }
+
+    function isValidOrder(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.courseId is string && data.courseId.size() > 0 && data.courseId.size() <= 100 &&
+             data.amount is number && data.amount >= 0 &&
+             data.status in ['PENDING', 'SUCCESS', 'FAILED'] &&
+             (!('courseTitle' in data) || (data.courseTitle is string && data.courseTitle.size() <= 200)) &&
+             (!('currency' in data) || (data.currency is string && data.currency.size() <= 10)) &&
+             (!('paymentProvider' in data) || (data.paymentProvider is string && data.paymentProvider.size() <= 50)) &&
+             (!('paymentMethod' in data) || (data.paymentMethod is string && data.paymentMethod.size() <= 50)) &&
+             (!('transactionId' in data) || data.transactionId == null || (data.transactionId is string && data.transactionId.size() <= 100)) &&
+             (!('updatedAt' in data) || data.updatedAt == null || (data.updatedAt is timestamp && data.updatedAt <= request.time));
+    }
+
+    function isValidNotification(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 150 &&
+             data.message is string && data.message.size() > 0 && data.message.size() <= 500 &&
+             data.read is bool &&
+             (!('titleBn' in data) || data.titleBn == null || (data.titleBn is string && data.titleBn.size() <= 200)) &&
+             (!('messageBn' in data) || data.messageBn == null || (data.messageBn is string && data.messageBn.size() <= 600)) &&
+             (!('type' in data) || (data.type is string && data.type.size() <= 50));
+    }
+
+    function isValidSupportTicket(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.userEmail is string && data.userEmail.size() >= 3 && data.userEmail.size() <= 150 &&
+             data.subject is string && data.subject.size() > 0 && data.subject.size() <= 200 &&
+             data.message is string && data.message.size() > 0 && data.message.size() <= 2000 &&
+             data.status in ['OPEN', 'RESOLVED'];
+    }
+
+    // --- Users Collection ---
+    match /users/{userId} {
+      allow get, list: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn() &&
+                       request.auth.uid == userId &&
+                       isValidId(userId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().createdAt is timestamp &&
+                       incoming().createdAt <= request.time &&
+                       isValidUser(incoming());
+      allow update: if isSignedIn() &&
+                       request.auth.uid == userId &&
+                       existing().userId == request.auth.uid &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidUser(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoUrl', 'language', 'updatedAt']);
+      allow delete: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // --- Categories Collection ---
+    match /categories/{categoryId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // --- Courses Collection ---
+    match /courses/{courseId} {
+      allow read: if isSignedIn() && resource.data.published == true;
+      allow write: if false;
+    }
+
+    // --- Lessons Collection ---
+    match /lessons/{lessonId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // --- Enrollments Collection ---
+    match /enrollments/{enrollmentId} {
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() &&
+                       incoming().userId == request.auth.uid &&
+                       isValidId(enrollmentId) &&
+                       incoming().enrolledAt is timestamp &&
+                       incoming().enrolledAt <= request.time &&
+                       isValidEnrollment(incoming());
+      allow update: if isSignedIn() &&
+                       existing().userId == request.auth.uid &&
+                       incoming().userId == existing().userId &&
+                       incoming().courseId == existing().courseId &&
+                       incoming().enrolledAt == existing().enrolledAt &&
+                       isValidEnrollment(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['completedLessonIds', 'progressPercent', 'lastLessonId', 'lastAccessedAt']);
+      allow delete: if false;
+    }
+
+    // --- Orders Collection ---
+    match /orders/{orderId} {
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() &&
+                       incoming().userId == request.auth.uid &&
+                       isValidId(orderId) &&
+                       incoming().createdAt is timestamp &&
+                       incoming().createdAt <= request.time &&
+                       isValidOrder(incoming());
+      allow update: if isSignedIn() &&
+                       existing().userId == request.auth.uid &&
+                       incoming().userId == existing().userId &&
+                       incoming().courseId == existing().courseId &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidOrder(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['status', 'transactionId', 'paymentMethod', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    // --- Notifications Collection ---
+    match /notifications/{notificationId} {
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() &&
+                       incoming().userId == request.auth.uid &&
+                       isValidId(notificationId) &&
+                       incoming().createdAt is timestamp &&
+                       incoming().createdAt <= request.time &&
+                       isValidNotification(incoming());
+      allow update: if isSignedIn() &&
+                       existing().userId == request.auth.uid &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       isValidNotification(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['read']);
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // --- Announcements Collection ---
+    match /announcements/{announcementId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+    }
+
+    // --- Support Tickets Collection ---
+    match /supportTickets/{ticketId} {
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() &&
+                       incoming().userId == request.auth.uid &&
+                       isValidId(ticketId) &&
+                       incoming().createdAt is timestamp &&
+                       incoming().createdAt <= request.time &&
+                       isValidSupportTicket(incoming());
+      allow update, delete: if false;
+    }
+  }
+}

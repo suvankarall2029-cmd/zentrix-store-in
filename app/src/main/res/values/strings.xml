@@ -1,0 +1,91 @@
+<resources>
+    <string name="app_name">Zentrix Store</string>
+    <string name="brand_subtitle">Premium Academy &amp; Marketplace</string>
+    <string name="welcome_headline">Empower Your Tech Future</string>
+    <string name="welcome_sub">Industry-grade certified courses, live projects, and expert mentorship.</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_explore">Explore</string>
+    <string name="nav_my_learning">My Learning</string>
+    <string name="nav_notifications">Notifications</string>
+    <string name="nav_profile">Profile</string>
+
+    <!-- Home & Explore -->
+    <string name="search_hint">Search courses, topics, instructors...</string>
+    <string name="featured_courses">Featured Courses</string>
+    <string name="free_courses">Free Courses</string>
+    <string name="paid_courses">Premium Courses</string>
+    <string name="popular_courses">Popular Courses</string>
+    <string name="recently_added">Recently Added</string>
+    <string name="categories">Categories</string>
+    <string name="view_all">View All</string>
+    <string name="filter_all">All</string>
+    <string name="filter_free">Free</string>
+    <string name="filter_paid">Paid</string>
+
+    <!-- Course Details -->
+    <string name="enroll_free">Enroll for Free</string>
+    <string name="buy_now">Buy Now</string>
+    <string name="continue_learning">Continue Learning</string>
+    <string name="already_enrolled">Enrolled</string>
+    <string name="curriculum">Curriculum</string>
+    <string name="instructor">Instructor</string>
+    <string name="duration">Duration</string>
+    <string name="level">Level</string>
+    <string name="students">Students</string>
+    <string name="free_tag">FREE</string>
+    <string name="course_overview">Course Overview</string>
+    <string name="pdf_resources">PDF Notes &amp; Resources</string>
+    <string name="video_lessons">Video Lessons</string>
+    <string name="preview_lesson">Preview Lesson</string>
+    <string name="locked_lesson">Locked (Enroll to access)</string>
+
+    <!-- Payment & Orders -->
+    <string name="order_summary">Order Summary</string>
+    <string name="payment_amount">Payment Amount</string>
+    <string name="razorpay_checkout">Secure Checkout via Razorpay</string>
+    <string name="upi_pay">UPI / GPay / PhonePe / Paytm</string>
+    <string name="card_netbanking">Credit/Debit Card &amp; NetBanking</string>
+    <string name="pay_now">Pay ₹%1$s &amp; Unlock Course</string>
+    <string name="payment_security_notice">256-bit SSL encrypted. Payment verified securely server-side.</string>
+    <string name="payment_successful">Payment Successful</string>
+    <string name="payment_failed">Payment Failed</string>
+    <string name="payment_history">Payment &amp; Purchase History</string>
+
+    <!-- My Learning -->
+    <string name="my_learning_title">My Learning Dashboard</string>
+    <string name="my_learning_empty">You haven\'t enrolled in any courses yet.</string>
+    <string name="explore_courses">Explore Courses</string>
+    <string name="progress">Progress</string>
+    <string name="completed">Completed</string>
+    <string name="resume_learning">Resume Last Lesson</string>
+    <string name="mark_as_completed">Mark Lesson as Completed</string>
+    <string name="lesson_completed">Lesson Completed</string>
+
+    <!-- Auth -->
+    <string name="sign_in_title">Welcome to Zentrix Store</string>
+    <string name="sign_in_subtitle">Sign in to access your purchased courses, certificates, and learning progress.</string>
+    <string name="sign_in_with_google">Sign in with Google</string>
+    <string name="signing_in">Signing in...</string>
+    <string name="sign_out">Sign Out</string>
+
+    <!-- Profile -->
+    <string name="profile_title">User Profile</string>
+    <string name="language_settings">Language / ভাষা</string>
+    <string name="english">English</string>
+    <string name="bengali">বাংলা (Bengali)</string>
+    <string name="terms_and_conditions">Terms and Conditions</string>
+    <string name="privacy_policy">Privacy Policy</string>
+    <string name="help_support">Help &amp; Support</string>
+    <string name="delete_account">Delete Account</string>
+    <string name="delete_account_confirm">Are you sure you want to delete your account? All progress and enrollments will be permanently removed.</string>
+
+    <!-- Support & Notifications -->
+    <string name="submit_ticket">Submit Support Ticket</string>
+    <string name="ticket_subject">Subject</string>
+    <string name="ticket_message">Describe your issue or question...</string>
+    <string name="ticket_submitted">Ticket submitted successfully. Our support team will contact you.</string>
+    <string name="no_notifications">No notifications right now.</string>
+    <string name="announcements">Platform Announcements</string>
+</resources>

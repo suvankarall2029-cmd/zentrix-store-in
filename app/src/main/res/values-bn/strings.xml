@@ -1,0 +1,91 @@
+<resources>
+    <string name="app_name">জেনট্রিক্স স্টোর</string>
+    <string name="brand_subtitle">প্রিমিয়াম একাডেমি ও মার্কেটপ্লেস</string>
+    <string name="welcome_headline">আপনার প্রযুক্তি ভবিষ্যৎ গড়ুন</string>
+    <string name="welcome_sub">শিল্পমানের সার্টিফিকেট কোর্স, লাইভ প্রজেক্ট এবং বিশেষজ্ঞ পরামর্শ।</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">হোম</string>
+    <string name="nav_explore">অন্বেষণ</string>
+    <string name="nav_my_learning">আমার শিক্ষা</string>
+    <string name="nav_notifications">বিজ্ঞপ্তি</string>
+    <string name="nav_profile">প্রোফাইল</string>
+
+    <!-- Home & Explore -->
+    <string name="search_hint">কোর্স, বিষয় বা প্রশিক্ষক খুঁজুন...</string>
+    <string name="featured_courses">বিশেষ নির্বাচিত কোর্স</string>
+    <string name="free_courses">বিনামূল্যে কোর্স</string>
+    <string name="paid_courses">প্রিমিয়াম কোর্স</string>
+    <string name="popular_courses">জনপ্রিয় কোর্স</string>
+    <string name="recently_added">সম্প্রতি যুক্ত</string>
+    <string name="categories">ক্যাটাগরি</string>
+    <string name="view_all">সব দেখুন</string>
+    <string name="filter_all">সকল</string>
+    <string name="filter_free">ফ্রি</string>
+    <string name="filter_paid">পেইড</string>
+
+    <!-- Course Details -->
+    <string name="enroll_free">বিনামূল্যে ভর্তি হন</string>
+    <string name="buy_now">এখনই কিনুন</string>
+    <string name="continue_learning">শেখা চালিয়ে যান</string>
+    <string name="already_enrolled">ভর্তি সম্পন্ন</string>
+    <string name="curriculum">পাঠ্যসূচি</string>
+    <string name="instructor">প্রশিক্ষক</string>
+    <string name="duration">সময়সীমা</string>
+    <string name="level">লেভেল</string>
+    <string name="students">শিক্ষার্থী</string>
+    <string name="free_tag">ফ্রি</string>
+    <string name="course_overview">কোর্স বিবরণ</string>
+    <string name="pdf_resources">পিডিএফ নোট ও রিসোর্স</string>
+    <string name="video_lessons">ভিডিও পাঠ</string>
+    <string name="preview_lesson">প্রিভিউ পাঠ</string>
+    <string name="locked_lesson">লক করা (ভর্তি আবশ্যক)</string>
+
+    <!-- Payment & Orders -->
+    <string name="order_summary">অর্ডার সারাংশ</string>
+    <string name="payment_amount">পেমেন্ট পরিমাণ</string>
+    <string name="razorpay_checkout">রেজরপে সুরক্ষিত চেকআউট</string>
+    <string name="upi_pay">ইউপিআই / জিপে / ফোনপে / পেটিএম</string>
+    <string name="card_netbanking">ক্রেডিট/ডেবিট কার্ড ও নেটব্যাংকিং</string>
+    <string name="pay_now">₹%1$s পরিশোধ করে কোর্স আনলক করুন</string>
+    <string name="payment_security_notice">২৫৬-বিট এসএসএল এনক্রিপ্টেড। সার্ভারে পেমেন্ট যাচাই করা হয়।</string>
+    <string name="payment_successful">পেমেন্ট সফল হয়েছে</string>
+    <string name="payment_failed">পেমেন্ট ব্যর্থ হয়েছে</string>
+    <string name="payment_history">পেমেন্ট ও ক্রয়ের ইতিহাস</string>
+
+    <!-- My Learning -->
+    <string name="my_learning_title">আমার শিক্ষা ড্যাশবোর্ড</string>
+    <string name="my_learning_empty">আপনি এখনও কোনো কোর্সে ভর্তি হননি।</string>
+    <string name="explore_courses">কোর্স অন্বেষণ করুন</string>
+    <string name="progress">অগ্রগতি</string>
+    <string name="completed">সম্পন্ন</string>
+    <string name="resume_learning">সর্বশেষ পাঠ শুরু করুন</string>
+    <string name="mark_as_completed">পাঠ সম্পন্ন হিসেবে চিহ্নিত করুন</string>
+    <string name="lesson_completed">পাঠ সম্পন্ন হয়েছে</string>
+
+    <!-- Auth -->
+    <string name="sign_in_title">জেনট্রিক্স স্টোরে স্বাগতম</string>
+    <string name="sign_in_subtitle">আপনার ক্রয়কৃত কোর্স, সার্টিফিকেট ও অগ্রগতি অ্যাক্সেস করতে সাইন ইন করুন।</string>
+    <string name="sign_in_with_google">গুগল দিয়ে সাইন ইন করুন</string>
+    <string name="signing_in">সাইন ইন হচ্ছে...</string>
+    <string name="sign_out">সাইন আউট</string>
+
+    <!-- Profile -->
+    <string name="profile_title">ইউজার প্রোফাইল</string>
+    <string name="language_settings">ভাষা / Language</string>
+    <string name="english">English (ইংরেজি)</string>
+    <string name="bengali">বাংলা</string>
+    <string name="terms_and_conditions">শর্তাবলী ও নিয়মাবলী</string>
+    <string name="privacy_policy">গোপনীয়তা নীতি</string>
+    <string name="help_support">সাহায্য ও সহায়তা</string>
+    <string name="delete_account">অ্যাকাউন্ট মুছুন</string>
+    <string name="delete_account_confirm">আপনি কি নিশ্চিত যে আপনার অ্যাকাউন্ট মুছতে চান? সমস্ত অগ্রগতি স্থায়ীভাবে মুছে যাবে।</string>
+
+    <!-- Support & Notifications -->
+    <string name="submit_ticket">সহায়তা টিকেট জমা দিন</string>
+    <string name="ticket_subject">বিষয়</string>
+    <string name="ticket_message">আপনার সমস্যা বা প্রশ্ন লিখুন...</string>
+    <string name="ticket_submitted">টিকেট সফলভাবে জমা দেওয়া হয়েছে। আমাদের দল দ্রুত যোগাযোগ করবে।</string>
+    <string name="no_notifications">এখন কোনো বিজ্ঞপ্তি নেই।</string>
+    <string name="announcements">প্ল্যাটফর্ম ঘোষণা</string>
+</resources>
