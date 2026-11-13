@@ -23,13 +23,76 @@ service cloud.firestore {
       return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
-    function isValidUser(data) {
-      return data.userId is string && data.userId == request.auth.uid &&
-             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 100 &&
-             data.email is string && data.email.size() >= 3 && data.email.size() <= 150 &&
-             (!('photoUrl' in data) || data.photoUrl == null || (data.photoUrl is string && data.photoUrl.size() <= 1000)) &&
+    function isBootstrappedAdmin() {
+      return isSignedIn() &&
+             'email_verified' in request.auth.token &&
+             request.auth.token.email_verified == true &&
+             'email' in request.auth.token &&
+             request.auth.token.email == 'suvankarall2029@gmail.com';
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin() ||
+             (isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)));
+    }
+
+    function hasValidCompletedRegistration(data) {
+      return !('registrationCompleted' in data) ||
+             data.registrationCompleted == false ||
+             (
+               data.firstName is string && data.firstName.size() >= 1 && data.firstName.size() <= 50 &&
+               data.lastName is string && data.lastName.size() >= 1 && data.lastName.size() <= 50 &&
+               data.fullName is string && data.fullName.size() >= 2 && data.fullName.size() <= 150 &&
+               data.age is int && data.age >= 13 && data.age <= 120 &&
+               data.purpose is string && data.purpose.size() >= 2 && data.purpose.size() <= 100 &&
+               data.interests is list && data.interests.size() >= 1 && data.interests.size() <= 20 &&
+               (data.email.size() >= 3 || ('phoneNumber' in data && data.phoneNumber is string && data.phoneNumber.size() >= 7))
+             );
+    }
+
+    function isValidUserCore(data) {
+      return data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             !('password' in data) &&
+             !('passwordHash' in data) &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120 &&
+             data.email is string && data.email.size() <= 150 &&
+             (!('status' in data) || data.status in ['ACTIVE', 'SUSPENDED']) &&
+             (!('role' in data) || data.role in ['USER', 'ADMIN']) &&
              (!('language' in data) || data.language == null || (data.language is string && data.language.size() <= 10)) &&
+             (!('photoUrl' in data) || data.photoUrl == null || (data.photoUrl is string && data.photoUrl.size() <= 1000)) &&
+             (!('age' in data) || data.age == null || (data.age is int && data.age >= 0 && data.age <= 120)) &&
+             (!('interests' in data) || (data.interests is list && data.interests.size() <= 20 && (data.interests.size() == 0 || data.interests[0] is string)));
+    }
+
+    function isValidUserStrings(data) {
+      return (!('publicUserId' in data) || data.publicUserId == null || (data.publicUserId is string && data.publicUserId.size() <= 40)) &&
+             (!('firstName' in data) || data.firstName == null || (data.firstName is string && data.firstName.size() <= 50)) &&
+             (!('middleName' in data) || data.middleName == null || (data.middleName is string && data.middleName.size() <= 50)) &&
+             (!('lastName' in data) || data.lastName == null || (data.lastName is string && data.lastName.size() <= 50)) &&
+             (!('fullName' in data) || data.fullName == null || (data.fullName is string && data.fullName.size() <= 150)) &&
+             (!('phoneNumber' in data) || data.phoneNumber == null || (data.phoneNumber is string && data.phoneNumber.size() <= 30)) &&
+             (!('countryCode' in data) || data.countryCode == null || (data.countryCode is string && data.countryCode.size() <= 10)) &&
+             (!('dateOfBirth' in data) || data.dateOfBirth == null || (data.dateOfBirth is string && data.dateOfBirth.size() <= 20)) &&
+             (!('ageGroup' in data) || data.ageGroup == null || (data.ageGroup is string && data.ageGroup.size() <= 20)) &&
+             (!('purpose' in data) || data.purpose == null || (data.purpose is string && data.purpose.size() <= 100)) &&
+             (!('otherPurpose' in data) || data.otherPurpose == null || (data.otherPurpose is string && data.otherPurpose.size() <= 200));
+    }
+
+    function isValidUserFlags(data) {
+      return (!('emailVerified' in data) || data.emailVerified is bool) &&
+             (!('phoneVerified' in data) || data.phoneVerified is bool) &&
+             (!('isVerified' in data) || data.isVerified is bool) &&
+             (!('registrationCompleted' in data) || data.registrationCompleted is bool) &&
+             (!('authProvider' in data) || data.authProvider in ['GOOGLE', 'PHONE', 'EMAIL']) &&
+             (!('lastLoginAt' in data) || data.lastLoginAt == null || (data.lastLoginAt is timestamp && data.lastLoginAt <= request.time)) &&
              (!('updatedAt' in data) || data.updatedAt == null || (data.updatedAt is timestamp && data.updatedAt <= request.time));
+    }
+
+    function isValidUser(data) {
+      return isValidUserCore(data) &&
+             isValidUserStrings(data) &&
+             isValidUserFlags(data) &&
+             hasValidCompletedRegistration(data);
     }
 
     function isValidEnrollment(data) {
@@ -77,22 +140,79 @@ service cloud.firestore {
 
     // --- Users Collection ---
     match /users/{userId} {
-      allow get, list: if isSignedIn() && request.auth.uid == userId;
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+
       allow create: if isSignedIn() &&
                        request.auth.uid == userId &&
                        isValidId(userId) &&
-                       incoming().userId == request.auth.uid &&
-                       incoming().createdAt is timestamp &&
-                       incoming().createdAt <= request.time &&
-                       isValidUser(incoming());
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.createdAt is timestamp &&
+                       request.resource.data.createdAt <= request.time &&
+                       (!('role' in request.resource.data) || request.resource.data.role == 'USER') &&
+                       (!('status' in request.resource.data) || request.resource.data.status == 'ACTIVE') &&
+                       isValidUser(request.resource.data);
+
       allow update: if isSignedIn() &&
-                       request.auth.uid == userId &&
-                       existing().userId == request.auth.uid &&
-                       incoming().userId == existing().userId &&
-                       incoming().createdAt == existing().createdAt &&
-                       isValidUser(incoming()) &&
-                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoUrl', 'language', 'updatedAt']);
-      allow delete: if isSignedIn() && request.auth.uid == userId;
+                       isValidUser(request.resource.data) &&
+                       request.resource.data.userId == resource.data.userId &&
+                       request.resource.data.createdAt == resource.data.createdAt && (
+                         // Action 1: Owner updates own profile / completes registration / updates login timestamp (cannot modify role or status)
+                         (
+                           request.auth.uid == userId &&
+                           resource.data.userId == request.auth.uid &&
+                           request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                             'displayName', 'photoUrl', 'language', 'publicUserId',
+                             'firstName', 'middleName', 'lastName', 'fullName',
+                             'email', 'phoneNumber', 'countryCode',
+                             'age', 'dateOfBirth', 'ageGroup',
+                             'purpose', 'otherPurpose', 'interests',
+                             'emailVerified', 'phoneVerified', 'isVerified',
+                             'registrationCompleted', 'authProvider',
+                             'lastLoginAt', 'updatedAt'
+                           ])
+                         ) ||
+                         // Action 2: Authorized Admin manages status, role, or verification status
+                         (
+                           isAdmin() &&
+                           request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                             'status', 'role', 'isVerified', 'emailVerified', 'phoneVerified', 'updatedAt'
+                           ])
+                         )
+                       );
+
+      allow delete: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+    }
+
+    // --- Admin Registry Collection ---
+    match /admins/{adminUid} {
+      allow get: if isSignedIn() && (request.auth.uid == adminUid || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isAdmin() &&
+                       isValidId(adminUid) &&
+                       incoming().userId == adminUid &&
+                       incoming().keys().hasAll(['userId', 'createdAt']) &&
+                       incoming().keys().hasOnly(['userId', 'email', 'grantedBy', 'createdAt']) &&
+                       incoming().createdAt is timestamp &&
+                       incoming().createdAt <= request.time;
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    // --- Duplicate Contact Locks (No PII stored; hash only) ---
+    match /contactLocks/{contactHash} {
+      allow get: if isSignedIn() && isValidId(contactHash);
+      allow list: if false;
+      allow create: if isSignedIn() &&
+                       isValidId(contactHash) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().contactType in ['EMAIL', 'PHONE'] &&
+                       incoming().keys().hasAll(['userId', 'contactType', 'createdAt']) &&
+                       incoming().keys().hasOnly(['userId', 'contactType', 'createdAt']) &&
+                       incoming().createdAt is timestamp &&
+                       incoming().createdAt <= request.time;
+      allow update: if false;
+      allow delete: if isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
     }
 
     // --- Categories Collection ---

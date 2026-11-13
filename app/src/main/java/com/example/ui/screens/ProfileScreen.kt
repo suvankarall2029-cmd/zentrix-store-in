@@ -7,6 +7,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Lock
@@ -74,6 +77,7 @@ import com.example.ui.viewmodel.ZentrixViewModel
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ProfileScreen(
     viewModel: ZentrixViewModel,
@@ -81,12 +85,14 @@ fun ProfileScreen(
     onLanguageChange: (String) -> Unit,
     onNavigateMyLearning: () -> Unit,
     onNavigateNotifications: () -> Unit,
-    onNavigateSupport: () -> Unit
+    onNavigateSupport: () -> Unit,
+    onNavigateAdminUsers: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val authUser = Firebase.auth.currentUser
     val userProfileState by viewModel.userProfile.collectAsState()
+    val isAdminUser by viewModel.isAdminUser.collectAsState()
     val ordersState by viewModel.orders.collectAsState()
     val enrollmentsState by viewModel.enrollments.collectAsState()
 
@@ -95,8 +101,14 @@ fun ProfileScreen(
     var showPrivacyDialog by remember { mutableStateOf(false) }
     var showOrdersDialog by remember { mutableStateOf(false) }
 
-    val displayName = authUser?.displayName ?: "Zentrix Learner"
-    val email = authUser?.email ?: "student@zentrixstore.app"
+    val profile = (userProfileState as? UiState.Success)?.data
+    val displayName = profile?.fullName?.takeIf { it.isNotBlank() }
+        ?: profile?.displayName?.takeIf { it.isNotBlank() }
+        ?: authUser?.displayName
+        ?: "Zentrix Learner"
+    val email = profile?.email?.takeIf { it.isNotBlank() }
+        ?: authUser?.email
+        ?: "student@zentrixstore.app"
 
     val enrolledCount = when (val state = enrollmentsState) {
         is UiState.Success -> state.data.size
@@ -160,22 +172,126 @@ fun ProfileScreen(
                             color = ZentrixTextSecondary
                         )
                         Spacer(modifier = Modifier.height(6.dp))
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(ZentrixPrimaryBlue.copy(alpha = 0.2f))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = "GOOGLE VERIFIED ACCOUNT",
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    fontSize = 9.sp,
-                                    fontWeight = FontWeight.Bold
-                                ),
-                                color = ZentrixSecondaryBlue
-                            )
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(ZentrixPrimaryBlue.copy(alpha = 0.2f))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = if (profile?.isVerified == true) "VERIFIED ACCOUNT" else "PENDING VERIFICATION",
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold
+                                    ),
+                                    color = ZentrixSecondaryBlue
+                                )
+                            }
+                            if (profile?.publicUserId?.isNotBlank() == true) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(ZentrixSurfaceVariant)
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = profile.publicUserId,
+                                        style = MaterialTheme.typography.labelMedium.copy(
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold
+                                        ),
+                                        color = ZentrixTextSecondary
+                                    )
+                                }
+                            }
                         }
                     }
+                }
+            }
+        }
+
+        // Registered Account Details
+        if (profile != null && profile.registrationCompleted) {
+            item {
+                Card(
+                    shape = MaterialTheme.shapes.medium,
+                    colors = CardDefaults.cardColors(containerColor = ZentrixSurface),
+                    border = BorderStroke(1.dp, ZentrixCardBorder),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = if (isBengali) "নিবন্ধিত প্রোফাইল বিবরণ" else "Registered Account Profile",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = ZentrixTextPrimary
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        if (!profile.phoneNumber.isNullOrBlank()) {
+                            ProfileKeyValueRow("Phone", profile.phoneNumber)
+                        }
+                        if (profile.ageGroup.isNotBlank()) {
+                            ProfileKeyValueRow("Age Group", "${profile.ageGroup} (${profile.age} yrs)")
+                        }
+                        if (profile.purpose.isNotBlank()) {
+                            val purposeText = if (profile.purpose == "Other" && !profile.otherPurpose.isNullOrBlank()) {
+                                "Other: ${profile.otherPurpose}"
+                            } else profile.purpose
+                            ProfileKeyValueRow("Purpose", purposeText)
+                        }
+                        ProfileKeyValueRow("Status", "${profile.status} • ${profile.role}")
+                        if (profile.interests.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = if (isBengali) "আগ্রহের বিষয়" else "Interests",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = ZentrixTextSecondary
+                            )
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                profile.interests.forEach { interest ->
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(ZentrixPrimaryBlue.copy(alpha = 0.16f))
+                                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                                    ) {
+                                        Text(
+                                            text = interest,
+                                            style = MaterialTheme.typography.labelMedium.copy(fontSize = 11.sp),
+                                            color = ZentrixSecondaryBlue
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Admin Control Panel Entry Point (Authorized Admins Only)
+        if (isAdminUser) {
+            item {
+                Card(
+                    shape = MaterialTheme.shapes.medium,
+                    colors = CardDefaults.cardColors(containerColor = ZentrixSurface),
+                    border = BorderStroke(1.dp, ZentrixSecondaryBlue.copy(alpha = 0.6f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("profile_admin_panel_card")
+                ) {
+                    ProfileMenuRow(
+                        icon = Icons.Default.AdminPanelSettings,
+                        title = if (isBengali) "অ্যাডমিন কন্ট্রোল প্যানেল — ব্যবহারকারী" else "Admin Control Panel — User Management",
+                        tint = ZentrixSecondaryBlue,
+                        onClick = onNavigateAdminUsers
+                    )
                 }
             }
         }
@@ -567,6 +683,25 @@ private fun ProfileMenuRow(
             contentDescription = null,
             tint = ZentrixTextSecondary,
             modifier = Modifier.size(16.dp)
+        )
+    }
+}
+
+@Composable
+private fun ProfileKeyValueRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
+            color = ZentrixTextSecondary
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, fontWeight = FontWeight.Medium),
+            color = ZentrixTextPrimary
         )
     }
 }

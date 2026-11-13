@@ -9,12 +9,53 @@ import com.google.firebase.firestore.ServerTimestamp
 data class UserProfile(
     @DocumentId val id: String = "",
     val userId: String = "",
+    val publicUserId: String = "",
     val displayName: String = "",
+    val firstName: String = "",
+    val middleName: String? = null,
+    val lastName: String = "",
+    val fullName: String = "",
     val email: String = "",
+    val phoneNumber: String? = null,
+    val countryCode: String? = null,
     val photoUrl: String? = null,
     val language: String = "en",
+    val age: Int = 0,
+    val dateOfBirth: String? = null,
+    val ageGroup: String = "",
+    val purpose: String = "",
+    val otherPurpose: String? = null,
+    val interests: List<String> = emptyList(),
+    val emailVerified: Boolean = false,
+    val phoneVerified: Boolean = false,
+    val isVerified: Boolean = false,
+    val status: String = "ACTIVE",
+    val role: String = "USER",
+    val registrationCompleted: Boolean = false,
+    val authProvider: String = "GOOGLE",
+    @ServerTimestamp val lastLoginAt: Timestamp? = null,
     @ServerTimestamp val createdAt: Timestamp? = null,
     @ServerTimestamp val updatedAt: Timestamp? = null
+)
+
+data class RegistrationDraft(
+    val firstName: String = "",
+    val middleName: String = "",
+    val lastName: String = "",
+    val email: String = "",
+    val countryCode: String = "+91",
+    val phoneLocal: String = "",
+    val emailVerified: Boolean = false,
+    val phoneVerified: Boolean = false,
+    val verificationId: String? = null,
+    val password: String = "",
+    val confirmPassword: String = "",
+    val dateOfBirth: String = "",
+    val ageInput: String = "",
+    val computedAge: Int? = null,
+    val purpose: String = "",
+    val otherPurpose: String = "",
+    val interests: Set<String> = emptySet()
 )
 
 @IgnoreExtraProperties

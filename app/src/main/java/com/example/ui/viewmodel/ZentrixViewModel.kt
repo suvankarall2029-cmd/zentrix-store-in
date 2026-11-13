@@ -14,12 +14,15 @@ import com.example.model.StoreNotification
 import com.example.model.UserProfile
 import com.google.firebase.firestore.FirebaseFirestoreException
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -30,6 +33,7 @@ sealed interface UiState<out T> {
     data class Error(val message: String) : UiState<Nothing>
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class ZentrixViewModel(
     val repository: ZentrixRepository,
     val currentUserId: String
@@ -93,6 +97,38 @@ class ZentrixViewModel(
             initialValue = UiState.Loading
         )
 
+    val isAdminUser: StateFlow<Boolean> = userProfile
+        .map { state ->
+            val roleIsAdmin = (state as? UiState.Success)?.data?.role == "ADMIN"
+            roleIsAdmin || repository.isBootstrappedAdminSession()
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
+            initialValue = repository.isBootstrappedAdminSession()
+        )
+
+    // Scoped strictly to authorized admins so standard users never issue list queries on /users
+    val adminUsers: StateFlow<UiState<List<UserProfile>>> = isAdminUser
+        .flatMapLatest { admin ->
+            if (!admin) {
+                flowOf(UiState.Success(emptyList()))
+            } else {
+                repository.observeAllUsers()
+                    .map<List<UserProfile>, UiState<List<UserProfile>>> { UiState.Success(it) }
+                    .catch { error ->
+                        val rootError = unwrapError(error)
+                        Log.w(TAG, "Error observing all users as admin", rootError)
+                        emit(UiState.Error(rootError.message ?: "Failed to load user directory"))
+                    }
+            }
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
+            initialValue = UiState.Loading
+        )
+
     val categories: StateFlow<UiState<List<Category>>> = repository.observeCategories()
         .map<List<Category>, UiState<List<Category>>> { UiState.Success(it) }
         .catch { error ->
@@ -119,7 +155,6 @@ class ZentrixViewModel(
             initialValue = UiState.Loading
         )
 
-    // Filtered courses stream based on search, category and free/paid filter
     val filteredCourses: StateFlow<List<Course>> = combine(
         allCourses,
         _searchQuery,
@@ -129,10 +164,10 @@ class ZentrixViewModel(
         if (coursesState !is UiState.Success) return@combine emptyList()
         coursesState.data.filter { course ->
             val matchesQuery = query.isBlank() ||
-                    course.title.contains(query, ignoreCase = true) ||
-                    course.titleBn.contains(query, ignoreCase = true) ||
-                    course.instructor.contains(query, ignoreCase = true) ||
-                    course.description.contains(query, ignoreCase = true)
+                course.title.contains(query, ignoreCase = true) ||
+                course.titleBn.contains(query, ignoreCase = true) ||
+                course.instructor.contains(query, ignoreCase = true) ||
+                course.description.contains(query, ignoreCase = true)
 
             val matchesCategory = category == null || course.category == category
 
@@ -224,7 +259,6 @@ class ZentrixViewModel(
     ) {
         viewModelScope.launch {
             _paymentProcessing.value = true
-            // Generate verified transaction
             val transactionId = "rzp_txn_${System.currentTimeMillis().toString().takeLast(8)}"
             val result = repository.purchaseCourse(
                 course = course,
@@ -277,6 +311,74 @@ class ZentrixViewModel(
             )
             repository.saveUserProfile(updated)
         }
+    }
+
+    // --- Admin Actions ---
+    fun adminSetUserStatus(targetUser: UserProfile, newStatus: String) {
+        if (!isAdminUser.value) return
+        if (targetUser.userId == currentUserId && newStatus == "SUSPENDED") {
+            _toastMessage.value = "You cannot suspend your own active admin session."
+            return
+        }
+        viewModelScope.launch {
+            val result = repository.adminUpdateUserStatus(targetUser.userId, newStatus)
+            _toastMessage.value = if (result.isSuccess) {
+                "${targetUser.displayName} marked as $newStatus."
+            } else {
+                result.exceptionOrNull()?.message ?: "Failed to update user status."
+            }
+        }
+    }
+
+    fun adminSetUserRole(targetUser: UserProfile, newRole: String) {
+        if (!isAdminUser.value) return
+        if (targetUser.userId == currentUserId && newRole != "ADMIN") {
+            _toastMessage.value = "You cannot remove your own ADMIN role."
+            return
+        }
+        viewModelScope.launch {
+            val result = repository.adminUpdateUserRole(targetUser.userId, targetUser.email, newRole)
+            _toastMessage.value = if (result.isSuccess) {
+                "${targetUser.displayName} role updated to $newRole."
+            } else {
+                result.exceptionOrNull()?.message ?: "Failed to update user role."
+            }
+        }
+    }
+
+    fun adminToggleVerification(targetUser: UserProfile) {
+        if (!isAdminUser.value) return
+        viewModelScope.launch {
+            val nextVerified = !targetUser.isVerified
+            val result = repository.adminUpdateUserVerification(targetUser.userId, nextVerified)
+            _toastMessage.value = if (result.isSuccess) {
+                if (nextVerified) "${targetUser.displayName} verified." else "${targetUser.displayName} marked unverified."
+            } else {
+                result.exceptionOrNull()?.message ?: "Failed to update verification."
+            }
+        }
+    }
+
+    fun buildUsersCsvExport(users: List<UserProfile>): String {
+        val header = "PublicID,UID,FullName,Email,Phone,Age,AgeGroup,Purpose,Verified,Status,Role"
+        val rows = users.map { u ->
+            listOf(
+                u.publicUserId,
+                u.userId,
+                u.fullName.ifBlank { u.displayName },
+                u.email,
+                u.phoneNumber.orEmpty(),
+                if (u.age > 0) u.age.toString() else "",
+                u.ageGroup,
+                u.purpose,
+                u.isVerified.toString(),
+                u.status,
+                u.role
+            ).joinToString(",") { cell ->
+                "\"${cell.replace("\"", "\"\"")}\""
+            }
+        }
+        return (listOf(header) + rows).joinToString("\n")
     }
 
     fun deleteAccount(onComplete: () -> Unit) {

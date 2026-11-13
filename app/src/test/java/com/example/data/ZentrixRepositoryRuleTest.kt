@@ -2,11 +2,13 @@ package com.example.data
 
 import com.example.base.FirestoreEmulatorTestBase
 import com.example.model.Course
+import com.example.model.RegistrationDraft
 import com.google.firebase.firestore.FirebaseFirestoreException
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -71,13 +73,11 @@ class ZentrixRepositoryRuleTest : FirestoreEmulatorTestBase() {
         val aliceRepo = ZentrixRepository(firestore)
         aliceRepo.enrollInFreeCourse(course)
 
-        // Bob signs in and tries to query Alice's enrollments directly
         signInTestUser(BOB_EMAIL)
         val bobRepo = ZentrixRepository(firestore)
 
         try {
             withTimeout(FLOW_TIMEOUT_MS) {
-                // Bob queries with Alice's userId -> must fail with PERMISSION_DENIED
                 bobRepo.observeUserEnrollments(aliceUid).first()
             }
             fail("Expected PERMISSION_DENIED for cross-user enrollment query")
@@ -121,7 +121,60 @@ class ZentrixRepositoryRuleTest : FirestoreEmulatorTestBase() {
         }
         assertNotNull(profile)
         assertEquals(uid, profile?.userId)
+        assertEquals("USER", profile?.role)
+        assertEquals("ACTIVE", profile?.status)
         assertTrue(!profile?.displayName.isNullOrBlank())
+    }
+
+    @Test
+    fun completeRegistration_savesFullProfileAndPreventsDuplicateContacts() = runBlocking {
+        val uniqueSuffix = UUID.randomUUID().toString().take(6)
+        val aliceEmail = "alice_$uniqueSuffix@zentrixstore.app"
+        val bobEmail = "bob_$uniqueSuffix@zentrixstore.app"
+        val sharedPhone = "98${(10000000..99999999).random()}"
+
+        val aliceUid = signInTestUser(aliceEmail)
+        val repository = ZentrixRepository(firestore)
+
+        val draft = RegistrationDraft(
+            firstName = "anirban",
+            middleName = "kumar",
+            lastName = "roy",
+            email = aliceEmail,
+            countryCode = "+91",
+            phoneLocal = sharedPhone,
+            emailVerified = true,
+            dateOfBirth = "2001-04-12",
+            computedAge = 25,
+            purpose = "Android App Developer",
+            interests = setOf("Android Applications", "Java / Kotlin")
+        )
+
+        val completionResult = withTimeout(DEFAULT_TIMEOUT_MS) {
+            repository.completeRegistration(draft)
+        }
+        assertTrue("Expected registration completion to succeed: ${completionResult.exceptionOrNull()}", completionResult.isSuccess)
+        val saved = completionResult.getOrNull()!!
+        assertEquals(aliceUid, saved.userId)
+        assertEquals("Anirban Kumar Roy", saved.fullName)
+        assertEquals("USER", saved.role)
+        assertEquals("ACTIVE", saved.status)
+        assertEquals("25-34", saved.ageGroup)
+        assertTrue(saved.registrationCompleted)
+
+        // Second user attempting to claim same phone number must be rejected
+        signInTestUser(bobEmail)
+        val bobRepo = ZentrixRepository(firestore)
+        val duplicateDraft = draft.copy(
+            firstName = "Bob",
+            middleName = "",
+            lastName = "Das",
+            email = bobEmail
+        )
+        val duplicateResult = withTimeout(DEFAULT_TIMEOUT_MS) {
+            bobRepo.completeRegistration(duplicateDraft)
+        }
+        assertFalse("Duplicate phone registration should fail", duplicateResult.isSuccess)
     }
 
     private companion object {

@@ -2,18 +2,62 @@
   "entities": {
     "User": {
       "title": "User",
-      "description": "User profile associated with Google Sign-In UID",
+      "description": "Zentrix Store user profile, onboarding details, and account status",
       "type": "object",
       "properties": {
         "userId": { "type": "string", "description": "Firebase Auth UID" },
+        "publicUserId": { "type": "string", "description": "Unique human-readable ZX user ID" },
         "displayName": { "type": "string", "description": "User display name" },
+        "firstName": { "type": "string", "description": "First name" },
+        "middleName": { "type": "string", "description": "Optional middle name" },
+        "lastName": { "type": "string", "description": "Last name" },
+        "fullName": { "type": "string", "description": "Formatted full name" },
         "email": { "type": "string", "description": "User email address" },
+        "phoneNumber": { "type": "string", "description": "Normalized E.164 phone number" },
+        "countryCode": { "type": "string", "description": "Phone country dialing code" },
         "photoUrl": { "type": "string", "description": "Profile photo URL" },
         "language": { "type": "string", "description": "Preferred language en or bn" },
+        "age": { "type": "integer", "description": "Validated user age (>= 13)" },
+        "dateOfBirth": { "type": "string", "description": "Date of birth YYYY-MM-DD" },
+        "ageGroup": { "type": "string", "description": "Computed age bracket" },
+        "purpose": { "type": "string", "description": "Primary usage purpose" },
+        "otherPurpose": { "type": "string", "description": "Custom purpose description when purpose is Other" },
+        "interests": { "type": "array", "description": "Selected Zentrix Store interests" },
+        "emailVerified": { "type": "boolean", "description": "Whether email is verified" },
+        "phoneVerified": { "type": "boolean", "description": "Whether phone OTP is verified" },
+        "isVerified": { "type": "boolean", "description": "Overall verification status" },
+        "status": { "type": "string", "description": "ACTIVE or SUSPENDED" },
+        "role": { "type": "string", "description": "USER or ADMIN" },
+        "registrationCompleted": { "type": "boolean", "description": "Whether 4-step registration is completed" },
+        "authProvider": { "type": "string", "description": "GOOGLE, PHONE, or EMAIL" },
+        "lastLoginAt": { "type": "string", "format": "date-time", "description": "Last login timestamp via serverTimestamp" },
         "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp via serverTimestamp" },
         "updatedAt": { "type": "string", "format": "date-time", "description": "Update timestamp via serverTimestamp" }
       },
-      "required": ["userId", "displayName", "email", "createdAt"]
+      "required": ["userId", "displayName", "email", "role", "status", "createdAt"]
+    },
+    "AdminEntry": {
+      "title": "AdminEntry",
+      "description": "Authorized admin role registry keyed by UID",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Admin Firebase Auth UID" },
+        "email": { "type": "string", "description": "Admin email address" },
+        "grantedBy": { "type": "string", "description": "Admin UID who granted access" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Grant timestamp via serverTimestamp" }
+      },
+      "required": ["userId", "createdAt"]
+    },
+    "ContactLock": {
+      "title": "ContactLock",
+      "description": "Unique contact hash mapping preventing duplicate registration without exposing PII",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner UID" },
+        "contactType": { "type": "string", "description": "EMAIL or PHONE" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Lock timestamp via serverTimestamp" }
+      },
+      "required": ["userId", "contactType", "createdAt"]
     },
     "Category": {
       "title": "Category",
@@ -153,7 +197,15 @@
   "firestore": {
     "/users/{userId}": {
       "schema": "User",
-      "description": "User profile documents"
+      "description": "User profile and registration documents"
+    },
+    "/admins/{adminUid}": {
+      "schema": "AdminEntry",
+      "description": "Admin privilege registry"
+    },
+    "/contactLocks/{contactHash}": {
+      "schema": "ContactLock",
+      "description": "Hashed contact uniqueness locks"
     },
     "/categories/{categoryId}": {
       "schema": "Category",

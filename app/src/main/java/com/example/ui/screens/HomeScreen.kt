@@ -85,7 +85,12 @@ fun HomeScreen(
     }
 
     val userName = when (val state = userProfileState) {
-        is UiState.Success -> state.data?.displayName?.takeIf { it.isNotBlank() } ?: "Learner"
+        is UiState.Success -> {
+            val p = state.data
+            p?.firstName?.takeIf { it.isNotBlank() }
+                ?: p?.displayName?.takeIf { it.isNotBlank() }
+                ?: "Learner"
+        }
         else -> "Learner"
     }
 
