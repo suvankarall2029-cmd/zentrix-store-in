@@ -20,6 +20,7 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -76,7 +77,7 @@ fun AppContent() {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     var currentUser by remember { mutableStateOf(Firebase.auth.currentUser) }
-    var hasAttemptedAutoSignIn by remember { mutableStateOf(false) }
+    var hasAttemptedAutoSignIn by rememberSaveable { mutableStateOf(false) }
 
     DisposableEffect(Unit) {
         val listener = FirebaseAuth.AuthStateListener { auth ->
